@@ -1,0 +1,42 @@
+services:
+  reranker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: baai-reranker-service
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_NAME=BAAI/bge-reranker-v2-m3
+      - USE_FP16=true
+      - MODEL_CACHE_DIR=/app/models
+      - PORT=8000
+      - HOST=0.0.0.0
+      - CORS_ORIGINS=*
+      - RELOAD=false
+    volumes:
+      # Mount local model cache to avoid re-downloading
+      - model_cache:/app/models
+      # For development: mount source code (commented out to avoid build conflicts)
+      # - ./app:/app:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    # Configure DNS for better connectivity
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+volumes:
+  model_cache:
+    driver: local

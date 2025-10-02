@@ -1,0 +1,42 @@
+# Azure Subscription
+subscription_id = "your-azure-subscription-id"
+
+# Resource Configuration
+resource_group_name = "rg-reranker-service-prod"
+location            = "eastus"
+
+# Container Registry
+container_registry_name = "acrrerankerservice"
+container_registry_sku  = "Basic"
+
+# Container Instance
+container_instance_name = "aci-reranker-service"
+container_image_name    = "reranker-service"
+container_image_tag     = "v1.0.0"
+container_cpu           = 2
+container_memory        = 4
+dns_name_label          = "reranker-api"
+restart_policy          = "OnFailure"
+
+# Model Configuration
+model_name = "BAAI/bge-reranker-v2-m3"
+use_fp16   = true
+
+# API Configuration
+cors_origins = "*"
+
+# Storage Configuration
+enable_model_cache_storage = true
+storage_account_name       = "sarerankercache"
+
+# Monitoring
+enable_application_insights = true
+
+# Resource Tags
+tags = {
+  Environment = "Production"
+  Service     = "RerankerService"
+  ManagedBy   = "Terraform"
+  Owner       = "AI-Team"
+  CostCenter  = "Engineering"
+}
