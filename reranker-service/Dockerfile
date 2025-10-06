@@ -35,10 +35,9 @@ RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
 # Pre-download the model during build to avoid runtime download
 # This caches the model in /root/.cache/huggingface/
 RUN /app/venv/bin/python -c "\
-from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
-print('Downloading model and tokenizer...'); \
-AutoTokenizer.from_pretrained('BAAI/bge-reranker-v2-m3'); \
-AutoModelForSequenceClassification.from_pretrained('BAAI/bge-reranker-v2-m3'); \
+from FlagEmbedding import FlagReranker; \
+print('Downloading BAAI reranker model...'); \
+FlagReranker('BAAI/bge-reranker-v2-m3', use_fp16=False); \
 print('Model downloaded successfully')"
 
 # Copy application code and startup script

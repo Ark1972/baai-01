@@ -57,4 +57,40 @@ Use this ollama model:
 
 Hybrid: FastAPI + FlagEmbedding running alongside Ollama server
 
+----
+I want a new endpoint for reranking.
+with the payload 
 
+payload = {
+query: "What is Python?",
+passages: [
+   "Python is a high-level programming language known for its simplicity and readability.",
+   "A python is a large non-venomous snake found in Africa, Asia, and Australia."
+   "To cook pasta, boil water, add salt, add pasta, and cook for 8-12 minutes until al dente.",
+   "Python is a programming language used for web development and data science."
+]
+}
+
+with response like
+{
+"re_ranked": [
+{
+"passage": "Python is a high-level programming language known for its simplicity and readability."
+"score": 0.997654321
+},
+{
+"passage": "A python is a large non-venomous snake found in Africa, Asia, and Australia."
+"score": 0.987654321
+},
+{
+"passage": "To cook pasta, boil water, add salt, add pasta, and cook for 8-12 minutes until al dente."
+"score": 0.977654321
+},
+{
+"passage": "Python is a programming language used for web development and data science."
+"score": 0.967654321
+}
+]
+}
+
+Where the list re_ranked is sorted by score in descending order.
