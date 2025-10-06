@@ -51,4 +51,10 @@ Let's plan the steps to achieve this goal.
 It is hanging on step Downloading pydantic_core-2.14.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB) 
 2.1 MB is not as huge, but it is taking too long time.
 
+---------
+Use this ollama model:
+   ollama pull xitao/bge-reranker-v2-m3
+
+Hybrid: FastAPI + FlagEmbedding running alongside Ollama server
+
 
