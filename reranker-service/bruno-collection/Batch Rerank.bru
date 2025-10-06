@@ -1,0 +1,51 @@
+meta {
+  name: Batch Rerank
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/rerank/batch
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "pairs": [
+      {
+        "query": "What is Python?",
+        "passage": "Python is a high-level programming language known for its simplicity and readability."
+      },
+      {
+        "query": "What is Python?",
+        "passage": "A python is a large non-venomous snake found in Africa, Asia, and Australia."
+      },
+      {
+        "query": "How to cook pasta?",
+        "passage": "To cook pasta, boil water, add salt, add pasta, and cook for 8-12 minutes until al dente."
+      },
+      {
+        "query": "How to cook pasta?",
+        "passage": "Python is a programming language used for web development and data science."
+      }
+    ]
+  }
+}
+
+docs {
+  Rerank multiple text pairs in batch.
+
+  Request:
+  - pairs: Array of text pairs (1-100 items)
+    - query: The query text
+    - passage: The passage text
+  - normalize: Optional, default true
+
+  Response:
+  - scores: List of scores in original order
+  - normalized: Whether scores are normalized
+  - pairs_count: Number of pairs processed
+
+  Note: Optimizes by grouping pairs with same query.
+}

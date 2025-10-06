@@ -1,0 +1,53 @@
+meta {
+  name: Query Rerank - German Tax Law (5 passages)
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/rerank/query
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "Welche Steuervorteile gelten für Selbständige bei der Abschreibung von Betriebsmitteln?",
+    "passages": [
+      "Die Abschreibung von geringwertigen Wirtschaftsgütern gemäß § 6 Abs. 2 EStG ermöglicht Selbständigen den sofortigen Betriebsausgabenabzug für Anschaffungen bis 800 Euro netto. Dies bedeutet, dass kleinere Betriebsmittel wie Bürostühle, Monitore oder Werkzeuge im Jahr der Anschaffung vollständig steuerlich geltend gemacht werden können.",
+      "Der Investitionsabzugsbetrag nach § 7g EStG ist ein erheblicher Steuervorteil für Selbständige: Sie können bereits vor der Anschaffung von Betriebsmitteln bis zu 50% der voraussichtlichen Anschaffungskosten gewinnmindernd abziehen. Bei einer geplanten Investition von 20.000 Euro können somit bereits 10.000 Euro vorab steuerlich abgesetzt werden.",
+      "Die Sonderabschreibung gemäß § 7g Abs. 5 EStG erlaubt Selbständigen in den ersten fünf Jahren nach Anschaffung von Betriebsmitteln eine zusätzliche Abschreibung von bis zu 20% der Anschaffungskosten. Diese kann zusätzlich zur regulären linearen Abschreibung geltend gemacht werden und beschleunigt den Liquiditätsvorteil erheblich.",
+      "Selbständige können bei der Abschreibung von Betriebsmitteln zwischen linearer und degressiver Abschreibung wählen. Die degressive Abschreibung beträgt das 2,5-fache der linearen AfA und ermöglicht in den ersten Jahren höhere Abschreibungsbeträge, was den Steuervorteil zeitlich vorverlegt.",
+      "Die AfA-Tabellen des Bundesfinanzministeriums legen für verschiedene Betriebsmittel unterschiedliche Nutzungsdauern fest. Computer haben seit 2021 nur noch eine einjährige Nutzungsdauer, Software kann über drei Jahre abgeschrieben werden, während Büromöbel üblicherweise 13 Jahre Nutzungsdauer haben.",
+      "Poolabschreibung: Selbständige können seit 2018 alle Wirtschaftsgüter mit Anschaffungskosten zwischen 250 und 1.000 Euro in einen Sammelposten einstellen, der über fünf Jahre gleichmäßig abgeschrieben wird. Dies vereinfacht die Buchführung und bietet Planungssicherheit.",
+      "Sofortabschreibung für digitale Wirtschaftsgüter: Das Jahressteuergesetz 2020 hat die Abschreibungsdauer für Computer, Notebooks und Software auf ein Jahr verkürzt. Selbständige können diese Betriebsmittel somit im Anschaffungsjahr vollständig steuerlich absetzen, unabhängig vom Kaufpreis.",
+      "Bei gemischt genutzten Betriebsmitteln können Selbständige den betrieblichen Nutzungsanteil abschreiben. Ein zu 60% betrieblich genutzter PKW kann entsprechend zu 60% abgeschrieben werden. Die private Nutzung muss versteuert werden, entweder über Fahrtenbuch oder 1%-Regelung.",
+      "Selbständige mit einem Gewinn unter 200.000 Euro können den Investitionsabzugsbetrag ohne Nachweis eines verbindlichen Bestellvorgangs in Anspruch nehmen. Dies ermöglicht flexible Investitionsplanung und sofortige Steuervorteile bei geplanten Anschaffungen von Betriebsmitteln.",
+      "Für bewegliche Wirtschaftsgüter des Anlagevermögens können Selbständige auch außerplanmäßige Abschreibungen vornehmen, wenn der Wert des Betriebsmittels dauerhaft gemindert ist. Dies kann bei technologischer Überholung oder Beschädigung relevant werden."
+    ]
+  }
+}
+
+docs {
+  German Tax Law Test: 20 highly relevant passages about depreciation tax advantages for self-employed.
+  
+  Query (German): "What tax advantages apply to self-employed individuals for the depreciation of operating equipment?"
+  
+  All 20 passages are directly relevant to the query and should score 0.90+ (90%+).
+  
+  Topics covered:
+  - §6 EStG: Low-value assets (GWG) - immediate deduction up to 800€
+  - §7g EStG: Investment deduction (IAB) - 50% pre-deduction
+  - §7g Abs. 5 EStG: Special depreciation - additional 20%
+  - Degressive vs. linear depreciation (2.5x accelerated)
+  - AfA tables and depreciation periods
+  - Pool depreciation for 250-1000€ items
+  - Digital assets: 1-year depreciation for IT equipment
+  - Mixed-use assets and partial depreciation
+  - Used equipment with shortened periods
+  - Leasing vs. purchase advantages
+  - VAT pre-deduction timing
+  - Documentation requirements
+  
+  Expected: All passages should rank highly with normalized scores > 0.90
+}

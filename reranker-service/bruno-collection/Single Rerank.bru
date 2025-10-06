@@ -1,0 +1,33 @@
+meta {
+  name: Single Rerank
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/rerank
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "query": "What is machine learning?",
+    "passage": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed."
+  }
+}
+
+docs {
+  Rerank a single text pair (query + passage).
+
+  Request:
+  - query: The query text (1-10000 chars)
+  - passage: The passage text (1-10000 chars)
+  - normalize: Optional, default true (normalizes scores to 0-1 range using sigmoid)
+
+  Response:
+  - score: Relevance score (normalized by default)
+  - normalized: Whether the score is normalized
+  - query_length: Length of query in characters
+  - passage_length: Length of passage in characters
+}
