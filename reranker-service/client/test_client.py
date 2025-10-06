@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test client for Ollama-based BAAI Reranker Service
+Test client for BAAI Reranker Service
 """
 
 import requests
@@ -10,11 +10,11 @@ import sys
 import os
 
 def test_ollama_reranker(base_url="http://localhost:8000"):
-    """Test the Ollama-based reranker service"""
-    
-    print("🔍 Testing Ollama-based BAAI Reranker Service")
+    """Test the PyTorch-based reranker service"""
+
+    print("🔍 Testing BAAI Reranker Service")
     print("=" * 50)
-    
+
     # Test 1: Health check
     print("\n1. Health Check:")
     try:
@@ -22,7 +22,8 @@ def test_ollama_reranker(base_url="http://localhost:8000"):
         if response.status_code == 200:
             health = response.json()
             print(f"✅ Service Status: {health['status']}")
-            print(f"   Ollama Status: {health['ollama_status']}")
+            print(f"   Model Loaded: {health['model_loaded']}")
+            print(f"   Device: {health['device']}")
             print(f"   Model: {health['model_name']}")
         else:
             print(f"❌ Health check failed: {response.status_code}")
@@ -143,7 +144,7 @@ def main():
     """Main function"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Test Ollama-based reranker service")
+    parser = argparse.ArgumentParser(description="Test BAAI reranker service")
     parser.add_argument(
         "--url",
         default="http://localhost:8000",

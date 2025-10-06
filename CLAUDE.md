@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BAAI Reranker Service - A containerized FastAPI web service for text reranking using Ollama with the `xitao/bge-reranker-v2-m3` model. This hybrid architecture combines Ollama's optimized inference engine with a FastAPI REST interface for production-ready text reranking.
+BAAI Reranker Service - A containerized FastAPI web service for text reranking using PyTorch and Transformers with the `BAAI/bge-reranker-v2-m3` model. The model is pre-downloaded during Docker build for fast startup and offline operation.
 
 ## Build & Run Commands
 
@@ -12,7 +12,7 @@ BAAI Reranker Service - A containerized FastAPI web service for text reranking u
 cd reranker-service
 
 # Build and run
-make build                    # Build Ollama Docker image
+make build                    # Build Docker image (downloads model during build)
 make run                      # Start with docker-compose
 make stop                     # Stop services
 make logs                     # View logs
@@ -37,30 +37,27 @@ make deploy                   # Full pipeline: build + push + deploy
 
 ## Architecture
 
-### Hybrid Ollama + FastAPI Setup
-- **Ollama Server**: Manages and serves the `xitao/bge-reranker-v2-m3` model on port 11434
-- **FastAPI Application**: Provides REST API on port 8000, proxies requests to Ollama
-- **Startup Script**: `startup.sh` manages service orchestration with retry logic for model downloads
+### PyTorch + FastAPI Setup
+- **PyTorch + Transformers**: Direct inference with `BAAI/bge-reranker-v2-m3` cross-encoder model
+- **FastAPI Application**: REST API on port 8000
+- **Pre-downloaded Model**: Baked into Docker image (~2.3GB) for fast startup
 
 ### Request Flow
 ```
-Client → FastAPI (port 8000) → Ollama API (port 11434) → Model inference → Response
+Client → FastAPI (port 8000) → PyTorch Model → Response
 ```
 
 ### Startup Sequence
 1. Container starts, `startup.sh` executes
-2. Ollama server launches in background
-3. Script waits for Ollama readiness (up to 60s)
-4. Model download with retry logic (5 attempts, 30min timeout each)
-5. Model verification
-6. FastAPI application starts
+2. Model loads from pre-downloaded cache (`/root/.cache/huggingface/`)
+3. FastAPI application starts (15-30 seconds total)
 
 ## Key Files
 
 ```
 reranker-service/
 ├── app/
-│   └── main.py                  # FastAPI app with Ollama integration
+│   └── main.py                  # FastAPI app with PyTorch integration
 ├── client/
 │   └── test_client.py           # Test client
 ├── terraform/                   # Azure infrastructure as code
@@ -70,10 +67,10 @@ reranker-service/
 │   └── terraform.tfvars.example # Example configuration
 ├── scripts/
 │   └── deploy_azure.sh          # Azure deployment script
-├── Dockerfile                   # Container build
+├── Dockerfile                   # Container build with model download
 ├── docker-compose.yml           # Production deployment config
-├── startup.sh                   # Service orchestration with retry logic
-├── requirements.txt             # Python dependencies
+├── startup.sh                   # Service startup script
+├── requirements.txt             # Python dependencies (torch, transformers, fastapi)
 ├── Makefile                     # Build automation
 └── README.md                    # Documentation
 ```
@@ -82,8 +79,8 @@ reranker-service/
 
 All endpoints documented at `http://localhost:8000/docs` (Swagger) or `/redoc` (ReDoc)
 
-- **GET /health**: Health check for both FastAPI and Ollama services
-  - Returns: `{status, ollama_status, model_name, version}`
+- **GET /health**: Health check for model status
+  - Returns: `{status, model_loaded, model_name, device, version}`
 - **POST /rerank**: Single query-passage pair reranking
   - Body: `{query, passage, normalize}`
   - Returns: `{score, normalized, query_length, passage_length}`
@@ -95,64 +92,52 @@ All endpoints documented at `http://localhost:8000/docs` (Swagger) or `/redoc` (
 ## Environment Variables
 
 ```bash
-MODEL_NAME=xitao/bge-reranker-v2-m3   # Ollama model identifier
-OLLAMA_HOST=127.0.0.1:11434            # Ollama server address
-PORT=8000                              # FastAPI service port
-HOST=0.0.0.0                           # Bind address
-CORS_ORIGINS=*                         # CORS allowed origins
-
-# Ollama performance optimizations (set in docker-compose.yml)
-OLLAMA_MAX_LOADED_MODELS=1             # Limit concurrent models
-OLLAMA_NUM_PARALLEL=1                  # Sequential processing
-OLLAMA_FLASH_ATTENTION=false           # Disable flash attention
-OLLAMA_KEEP_ALIVE=5m                   # Model unload timeout
+MODEL_NAME=BAAI/bge-reranker-v2-m3  # HuggingFace model identifier
+PORT=8000                            # FastAPI service port
+HOST=0.0.0.0                         # Bind address
+USE_FP16=false                       # Enable FP16 precision (requires CUDA)
+CORS_ORIGINS=*                       # CORS allowed origins
 ```
 
 ## Development Workflow
 
 ### Local Development (without Docker)
 ```bash
-# Install Ollama first: https://ollama.ai
-ollama serve &
-ollama pull xitao/bge-reranker-v2-m3
-
 cd reranker-service
-pip install -r requirements.ollama.txt
+pip install -r requirements.txt
 cd app
-uvicorn main_ollama:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Testing Flow
 1. Start service: `make run`
-2. Wait 2-3 minutes for model download (first run only)
+2. Wait 15-30 seconds for model loading
 3. Test endpoints: `make test-local`
-4. Test with client: `python client/test_ollama_client.py`
+4. Test with client: `python client/test_client.py`
 5. View logs: `make logs`
 
 ### Docker Build Details
-- **Base Image**: `ollama/ollama:latest`
-- **Additional Installs**: Python 3, pip, supervisor, curl
+- **Base Image**: `python:3.11-slim`
+- **Model Download**: During build (RUN step)
+- **Model Cache**: `/root/.cache/huggingface/` (baked into image + volume)
 - **Python Environment**: Virtual environment at `/app/venv`
-- **Model Storage**: Volume mounted at `/root/.ollama` for persistence
-- **Startup**: Custom `startup.sh` script handles model download and service orchestration
+- **Startup**: Simple `startup.sh` launches FastAPI directly
 
 ## Important Implementation Details
 
-### Model Download with Retry Logic
-The `startup.sh` script implements robust model downloading:
-- 5 retry attempts with 10-second delays
-- 30-minute timeout per attempt
-- Automatic cleanup of partial downloads
-- Fallback to `nomic-embed-text` model if primary fails
-- Environment variable configuration for Ollama performance
+### Rerank Model Class (`main.py`)
+- **Cross-Encoder Architecture**: Processes `[query, passage]` pairs jointly
+- **Score Extraction**: Gets logits from model output: `model(**inputs).logits.view(-1,).float()`
+- **Device Selection**: Auto-detects CUDA vs CPU
+- **FP16 Support**: Optional half-precision for GPU acceleration
+- **Batch Processing**: Handles multiple passages per query efficiently
+- **Tokenization**: Max length 512 tokens with truncation
 
-### Ollama Client (`main.py`)
-- **Async Operations**: Uses `httpx.AsyncClient` for non-blocking I/O
-- **Health Checks**: Verifies both Ollama server and model availability
-- **Flexible Model Matching**: Handles model names with/without version tags
-- **Batch Optimization**: Groups requests by query to minimize Ollama API calls
-- **Error Handling**: Comprehensive exception handling with logging
-- **Lifespan Management**: Waits for Ollama readiness before accepting requests
+### Model Loading
+- Pre-downloaded during Docker build (no runtime download)
+- Uses `AutoModelForSequenceClassification.from_pretrained()`
+- Cached in `/root/.cache/huggingface/hub/`
+- Persisted via Docker volume for faster rebuilds
 
 ### Request Validation
 - Pydantic models validate all inputs
@@ -162,15 +147,21 @@ The `startup.sh` script implements robust model downloading:
 
 ### Score Normalization
 - Optional sigmoid normalization: `1 / (1 + exp(-score))`
-- Converts raw scores to 0-1 range
+- Converts raw logits to 0-1 range
 - Applied consistently across single and batch endpoints
+
+### Batch Optimization
+- Groups requests by query to minimize model calls
+- Processes all passages for same query in single forward pass
+- Maps scores back to original positions in response
 
 ## Resource Requirements
 
-- **Memory**: 2-4GB (1.5GB for model + 0.5-2GB for inference)
+- **Memory**: 2-4GB (model ~1.5GB + inference overhead)
 - **CPU**: 1-2 cores
-- **Disk**: 2GB for model storage (persistent volume recommended)
-- **Startup Time**: 2-3 minutes on first run (model download), <30s on subsequent runs
+- **Disk**: 3GB for Docker image (includes pre-downloaded model)
+- **Startup Time**: 15-30 seconds (model loading from cache)
+- **GPU**: Optional (set `USE_FP16=true` for FP16 acceleration)
 
 ## Azure Deployment
 
@@ -185,41 +176,41 @@ The `startup.sh` script implements robust model downloading:
 - Azure Container Registry (ACR) for image storage
 - Azure Container Instance (ACI) for deployment
 - Resource Group for organization
-- Optional: Storage account for model caching
-
-### Deployment Script
-`scripts/deploy_azure.sh` provides automated deployment:
-- Creates resource group
-- Sets up container registry
-- Builds and pushes image to ACR
-- Deploys container instance
-- Configures networking and DNS
+- Note: Model is baked into image, no external storage needed
 
 ## Troubleshooting
 
+### Build Issues
+- **Slow build**: Model download during build (~2.3GB)
+  - Subsequent builds use Docker layer cache
+  - Check: `docker build --progress=plain .`
+- **Out of disk space**: Ensure 5GB+ free for build
+- **Network errors**: Check DNS, retry build
+
 ### Startup Issues
-- **Slow first start**: Model download can take 2-3 minutes
+- **Health check fails**: Model still loading (wait 30-60s)
 - **Check logs**: `make logs` or `docker-compose logs -f`
-- **Ollama not ready**: Wait full 60s for server initialization
-- **Model download fails**: Check DNS configuration (8.8.8.8, 1.1.1.1 configured)
+- **Memory errors**: Increase container limits in `docker-compose.yml`
 
 ### Runtime Errors
-- **503 Service Unavailable**: Ollama server or model not loaded
-  - Check: `curl localhost:11434/api/tags`
-  - Verify model: `docker exec <container> ollama list`
-- **Memory issues**: Increase container memory limit in `docker-compose.yml`
-- **Slow inference**: Model still loading, wait additional 30s
+- **503 Service Unavailable**: Model not loaded
+  - Check: `curl localhost:8000/health`
+  - View logs for PyTorch errors
+- **Slow inference**: First request may be slower (JIT compilation)
+- **OOM errors**: Reduce batch size or increase memory
 
 ### Model Management
 ```bash
-# List loaded models
-docker exec baai-reranker-service ollama list
+# Check model status
+curl http://localhost:8000/health
 
-# Pull/update model
-docker exec baai-reranker-service ollama pull xitao/bge-reranker-v2-m3
+# View model loading logs
+make logs
 
-# Remove model
-docker exec baai-reranker-service ollama rm xitao/bge-reranker-v2-m3
+# Rebuild with updated model
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
 ### Health Check Debugging
@@ -227,8 +218,8 @@ docker exec baai-reranker-service ollama rm xitao/bge-reranker-v2-m3
 # Check FastAPI
 curl http://localhost:8000/health
 
-# Check Ollama directly
-curl http://localhost:11434/api/tags
+# Check model info
+curl http://localhost:8000/ | jq .
 
 # Check container logs
 make logs
@@ -239,20 +230,54 @@ docker exec -it baai-reranker-service /bin/bash
 
 ## Performance Considerations
 
-1. **Model Caching**: Use Docker volumes to persist Ollama models across restarts
+1. **Pre-downloaded Model**: No runtime download = fast startup
 2. **Batch Processing**: Group requests with same query for better throughput
-3. **Resource Limits**: Configure appropriate CPU/memory limits in docker-compose.yml
-4. **Startup Optimization**: Pre-downloaded models in volume reduce startup time to <30s
-5. **Network Optimization**: DNS configuration (8.8.8.8) improves model download reliability
+3. **FP16 Precision**: Enable on GPU for 2x faster inference
+4. **Resource Limits**: Configure appropriate CPU/memory in docker-compose.yml
+5. **Model Caching**: Docker volume persists cache across container rebuilds
+
+## Technical Details
+
+### Cross-Encoder vs Bi-Encoder
+- **This model**: Cross-encoder (processes query+passage jointly)
+- **Output**: Single relevance score per pair
+- **Not suitable for**: Large-scale retrieval (use bi-encoders/embeddings)
+- **Best for**: Reranking top-K results from initial retrieval
+
+### Model Architecture
+- **Base**: XLM-RoBERTa (multilingual BERT)
+- **Type**: Sequence classification (binary classification head)
+- **Parameters**: 568M
+- **Max Input**: 512 tokens (truncated if longer)
+- **Output**: Single logit value (raw score)
+
+### Score Interpretation
+- **Raw scores**: Typically in range [-10, +10]
+- **Higher = more relevant**
+- **Normalized scores**: Sigmoid transform to [0, 1]
+- **No fixed threshold**: Scores are relative, use for ranking
 
 ## Code Quality
 
-Dependencies are minimal and focused:
+Dependencies:
+- `torch>=2.0.0` - PyTorch for model inference
+- `transformers>=4.35.0` - HuggingFace Transformers
 - `fastapi==0.104.1` - Web framework
 - `uvicorn[standard]==0.24.0` - ASGI server
 - `pydantic==2.5.0` - Data validation
-- `httpx==0.25.1` - Async HTTP client for Ollama
-- `python-multipart==0.0.6` - Form data parsing
-- `python-dotenv==1.0.0` - Environment config
 
-No heavy ML dependencies (torch, transformers) - Ollama handles all inference.
+No Ollama dependency - direct PyTorch implementation for accurate reranking.
+
+## Migration from Ollama
+
+This service was migrated from Ollama-based implementation because:
+- Ollama v0.12.3 lacks native `/api/rerank` endpoint
+- Cross-encoder models require direct logits access
+- Ollama's `/api/generate` returned incorrect scores (constant 0.525)
+- PyTorch implementation provides accurate, reliable reranking
+
+### Key Changes
+- Removed: Ollama server, httpx Ollama client
+- Added: PyTorch, Transformers, direct model inference
+- Model: Pre-downloaded during build (was runtime download)
+- Scores: Now correct (was hardcoded fallback)

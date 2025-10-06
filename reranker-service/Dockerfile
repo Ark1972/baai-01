@@ -1,26 +1,21 @@
 # BAAI Reranker Service Dockerfile
-FROM ollama/ollama:latest
+FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    OLLAMA_HOST=127.0.0.1:11434 \
-    MODEL_NAME=xitao/bge-reranker-v2-m3 \
+    MODEL_NAME=BAAI/bge-reranker-v2-m3 \
     PORT=8000 \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    USE_FP16=false
 
-# Install Python and supervisor for service management
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    supervisor \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/bin/python3 /usr/bin/python
+    && rm -rf /var/lib/apt/lists/*
 
 # Create necessary directories
-RUN mkdir -p /app /var/log/supervisor /root/.ollama
+RUN mkdir -p /app /root/.cache/huggingface
 
 # Set working directory
 WORKDIR /app
@@ -29,24 +24,35 @@ WORKDIR /app
 RUN python -m venv /app/venv && \
     /app/venv/bin/pip install --upgrade pip
 
-# Copy minimal requirements and install
+# Copy requirements and install dependencies
 COPY requirements.txt /app/
-RUN /app/venv/bin/pip install -r requirements.txt
+# Install PyTorch CPU-only version first (smaller and faster than default CUDA version)
+RUN /app/venv/bin/pip install --no-cache-dir \
+    torch --index-url https://download.pytorch.org/whl/cpu
+# Install remaining dependencies
+RUN /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# Pre-download the model during build to avoid runtime download
+# This caches the model in /root/.cache/huggingface/
+RUN /app/venv/bin/python -c "\
+from transformers import AutoModelForSequenceClassification, AutoTokenizer; \
+print('Downloading model and tokenizer...'); \
+AutoTokenizer.from_pretrained('BAAI/bge-reranker-v2-m3'); \
+AutoModelForSequenceClassification.from_pretrained('BAAI/bge-reranker-v2-m3'); \
+print('Model downloaded successfully')"
 
 # Copy application code and startup script
 COPY ./app /app
 COPY startup.sh /app/startup.sh
 RUN chmod +x /app/startup.sh
 
-# Note: Model will be pulled on first startup to avoid build complexity
+# Expose port
+EXPOSE 8000
 
-# Expose ports
-EXPOSE 8000 11434
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Health check for both services
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:8000/health && curl -f http://localhost:11434/api/tags || exit 1
-
-# Override Ollama's default entrypoint and use our startup script
+# Run startup script
 ENTRYPOINT ["/bin/bash"]
 CMD ["/app/startup.sh"]

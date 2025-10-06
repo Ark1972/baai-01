@@ -1,12 +1,12 @@
 # BAAI Reranker Service
 
-A containerized web service for text reranking using the `xitao/bge-reranker-v2-m3` model. This service combines Ollama's optimized inference engine with a FastAPI REST interface.
+A containerized web service for text reranking using the `BAAI/bge-reranker-v2-m3` model with PyTorch and Transformers.
 
 ## 🚀 Quick Start
 
 ### Build and Run
 ```bash
-# Build the container
+# Build the container (downloads model during build)
 make build
 
 # Run with docker-compose
@@ -18,7 +18,7 @@ docker-compose up -d
 
 ### Test the Service
 ```bash
-# Wait for startup (model download + loading)
+# Wait for startup (model loading)
 python client/test_client.py
 
 # Or manual test
@@ -28,53 +28,52 @@ curl http://localhost:8000/health
 ## 🏗️ Architecture
 
 ### Service Architecture
-- **Ollama Server**: Runs `xitao/bge-reranker-v2-m3` model on port 11434
-- **FastAPI**: Provides REST API interface on port 8000
-- **Startup Script**: Manages service orchestration in single container
+- **FastAPI**: REST API interface on port 8000
+- **PyTorch + Transformers**: Direct model inference
+- **Pre-downloaded Model**: Baked into Docker image (~2.3GB)
 
 ### Service Flow
 ```
-Client → FastAPI (port 8000) → Ollama API (port 11434) → Model → Response
+Client → FastAPI (port 8000) → PyTorch Model → Response
 ```
 
 ## 📁 Key Files
 
 ### Core Files
-- `Dockerfile` - Container setup
+- `Dockerfile` - Container setup with pre-downloaded model
 - `docker-compose.yml` - Deployment configuration
-- `startup.sh` - Service orchestration script
+- `startup.sh` - Service startup script
 - `requirements.txt` - Python dependencies
-- `app/main.py` - FastAPI application
+- `app/main.py` - FastAPI application with PyTorch integration
 - `client/test_client.py` - Test client
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
-MODEL_NAME=xitao/bge-reranker-v2-m3
-OLLAMA_HOST=127.0.0.1:11434
+MODEL_NAME=BAAI/bge-reranker-v2-m3
 PORT=8000
 HOST=0.0.0.0
+USE_FP16=false  # Enable FP16 precision (requires CUDA)
 CORS_ORIGINS=*
 ```
 
 ### Resource Requirements
 - **Memory**: 2-4GB (model + inference)
 - **CPU**: 1-2 cores
-- **Disk**: 2GB for model storage
-- **Startup Time**: 2-3 minutes (model download + load)
+- **Disk**: 3GB for model storage (baked into image)
+- **Startup Time**: 15-30 seconds (model loading from cache)
 
 ## 🚦 Startup Process
 
 1. **Container Start**: Startup script executes
-2. **Ollama Server**: Launches in background
-3. **Model Download**: `ollama pull xitao/bge-reranker-v2-m3` with retry logic
-4. **FastAPI**: Starts after Ollama and model are ready
-5. **Health Check**: Both services monitored
+2. **Model Loading**: Loads pre-downloaded model from `/root/.cache/huggingface/`
+3. **FastAPI Start**: REST API becomes available
+4. **Health Check**: Service monitored
 
 ## 📊 API Endpoints
 
-- `GET /health` - Health check (both services)
+- `GET /health` - Health check (model status)
 - `POST /rerank` - Single text pair
 - `POST /rerank/batch` - Multiple pairs
 - `GET /docs` - API documentation
@@ -106,18 +105,20 @@ curl -X POST http://localhost:8000/rerank/batch \
 
 ### Common Issues
 
-**Container takes long to start**
-- Model download happens during first run
-- Check logs: `docker-compose logs -f` or `make logs`
+**Container takes long to build**
+- Model download happens during build (~2.3GB)
+- Subsequent builds use Docker cache
+- Check logs: `docker build --progress=plain .`
 
 **Health check fails**
-- Ollama server may still be loading model
-- Wait 2-3 minutes for full startup
-- Check both services: `curl localhost:11434/api/tags`
+- Model may still be loading into memory
+- Wait 30-60 seconds for full startup
+- Check logs: `docker-compose logs -f` or `make logs`
 
 **Out of memory**
 - Increase container memory limit in docker-compose.yml
-- Model requires ~1.5GB RAM minimum
+- Model requires ~2GB RAM minimum
+- Disable FP16 if using CPU: `USE_FP16=false`
 
 ### Monitoring
 ```bash
@@ -125,9 +126,6 @@ curl -X POST http://localhost:8000/rerank/batch \
 docker-compose logs -f
 # Or use makefile
 make logs
-
-# Check Ollama directly
-curl http://localhost:11434/api/tags
 
 # Check FastAPI
 curl http://localhost:8000/health
@@ -145,26 +143,42 @@ terraform apply
 ```
 
 ### Performance Benefits
-- ✅ **No large downloads**: Ollama manages models efficiently
-- ✅ **Optimized inference**: Ollama's runtime optimizations
-- ✅ **Fast startup**: No PyTorch compilation
-- ✅ **Better resource usage**: Shared model memory
+- ✅ **No runtime downloads**: Model pre-downloaded in image
+- ✅ **Fast inference**: PyTorch optimizations
+- ✅ **Accurate scores**: Proper cross-encoder implementation
+- ✅ **Better resource usage**: Direct model access
 
 ## 🔄 Model Management
 
-### Available Commands
-```bash
-# Inside container
-docker exec -it baai-reranker-service ollama list
-docker exec -it baai-reranker-service ollama pull xitao/bge-reranker-v2-m3
-docker exec -it baai-reranker-service ollama rm xitao/bge-reranker-v2-m3
-```
+### Model Cache
+The model is pre-downloaded during Docker build and cached in:
+- **Build time**: `/root/.cache/huggingface/` (baked into image)
+- **Runtime**: Persisted via Docker volume `huggingface_cache`
 
 ### Model Updates
 ```bash
-# Pull latest model version
-docker exec -it baai-reranker-service ollama pull xitao/bge-reranker-v2-m3
-
-# Restart container to use updated model
-docker-compose restart
+# Rebuild with latest model version
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 ```
+
+## 📝 Technical Details
+
+### Model Information
+- **Name**: BAAI/bge-reranker-v2-m3
+- **Type**: Cross-encoder reranker
+- **Parameters**: 568M
+- **Input**: Query-passage pairs
+- **Output**: Relevance scores (logits)
+- **Max Length**: 512 tokens
+
+### How It Works
+Unlike embedding models that produce vectors, this cross-encoder:
+1. Takes `[query, passage]` as input
+2. Processes them jointly through BERT-based model
+3. Outputs a single relevance score from the classification head
+4. Optional sigmoid normalization to [0,1] range
+
+### No HuggingFace API Key Required
+The model is public and requires no authentication for download or use.

@@ -4,34 +4,23 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: baai-reranker-service
-    # Use bridge networking with port mapping for external access
     ports:
       - "8000:8000"  # FastAPI service
-      - "11434:11434"  # Ollama API (optional, for direct access)
     environment:
-      - MODEL_NAME=xitao/bge-reranker-v2-m3
-      - OLLAMA_HOST=127.0.0.1:11434
+      - MODEL_NAME=BAAI/bge-reranker-v2-m3
       - PORT=8000
       - HOST=0.0.0.0
+      - USE_FP16=false
       - CORS_ORIGINS=*
-      # Ollama performance optimizations
-      - OLLAMA_MAX_LOADED_MODELS=1
-      - OLLAMA_NUM_PARALLEL=1
-      - OLLAMA_FLASH_ATTENTION=false
-      - OLLAMA_KEEP_ALIVE=5m
     volumes:
-      # Ollama model storage (persistent between restarts)
-      - ollama_data:/root/.ollama
-      # Optional: mount local model directory if available
-      # - ./ollama-models:/app/models:ro
-      # Supervisor logs
-      - supervisor_logs:/var/log/supervisor
+      # HuggingFace model cache (persistent between restarts)
+      - huggingface_cache:/root/.cache/huggingface
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 15s
       retries: 5
-      start_period: 300s  # Extended time for model download with retries
+      start_period: 120s
     restart: unless-stopped
     deploy:
       resources:
@@ -41,13 +30,11 @@ services:
         reservations:
           memory: 2G
           cpus: '1.0'
-    # Configure DNS for better connectivity during model download
+    # Configure DNS for better connectivity
     dns:
       - 8.8.8.8
       - 1.1.1.1
 
 volumes:
-  ollama_data:
-    driver: local
-  supervisor_logs:
+  huggingface_cache:
     driver: local
