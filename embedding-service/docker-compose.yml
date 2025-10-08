@@ -1,0 +1,40 @@
+services:
+  embeddings:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: baai-embedding-service
+    ports:
+      - "8001:8001"  # Embedding service on port 8001
+    environment:
+      - MODEL_NAME=BAAI/bge-m3
+      - PORT=8001
+      - HOST=0.0.0.0
+      - USE_FP16=false
+      - CORS_ORIGINS=*
+    volumes:
+      # HuggingFace model cache (persistent between restarts)
+      - huggingface_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    # Configure DNS for better connectivity
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+volumes:
+  huggingface_cache:
+    driver: local

@@ -1,0 +1,23 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/health
+  body: none
+  auth: none
+}
+
+docs {
+  Health check endpoint to verify model status and service availability.
+
+  Returns:
+  - status: Service health status
+  - model_loaded: Whether the model is loaded
+  - model_name: Name of the loaded model (BAAI/bge-m3)
+  - device: Device used for inference (cpu/cuda)
+  - version: API version
+  - dimensions: Embedding dimensions (1024)
+}

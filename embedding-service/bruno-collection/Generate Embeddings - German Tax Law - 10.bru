@@ -1,0 +1,45 @@
+meta {
+  name: Generate Embeddings - German Tax Law - 10
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/embed
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "texts": [
+      "Die Abschreibung von geringwertigen Wirtschaftsgütern gemäß § 6 Abs. 2 EStG ermöglicht Selbständigen den sofortigen Betriebsausgabenabzug für Anschaffungen bis 800 Euro netto.",
+      "Der Investitionsabzugsbetrag nach § 7g EStG ist ein erheblicher Steuervorteil für Selbständige: Sie können bereits vor der Anschaffung von Betriebsmitteln bis zu 50% der voraussichtlichen Anschaffungskosten gewinnmindernd abziehen.",
+      "Die Sonderabschreibung gemäß § 7g Abs. 5 EStG erlaubt Selbständigen in den ersten fünf Jahren nach Anschaffung von Betriebsmitteln eine zusätzliche Abschreibung von bis zu 20% der Anschaffungskosten.",
+      "Selbständige können bei der Abschreibung von Betriebsmitteln zwischen linearer und degressiver Abschreibung wählen. Die degressive Abschreibung beträgt das 2,5-fache der linearen AfA.",
+      "Die AfA-Tabellen des Bundesfinanzministeriums legen für verschiedene Betriebsmittel unterschiedliche Nutzungsdauern fest. Computer haben seit 2021 nur noch eine einjährige Nutzungsdauer.",
+      "Poolabschreibung: Selbständige können seit 2018 alle Wirtschaftsgüter mit Anschaffungskosten zwischen 250 und 1.000 Euro in einen Sammelposten einstellen, der über fünf Jahre gleichmäßig abgeschrieben wird.",
+      "Sofortabschreibung für digitale Wirtschaftsgüter: Das Jahressteuergesetz 2020 hat die Abschreibungsdauer für Computer, Notebooks und Software auf ein Jahr verkürzt.",
+      "Bei gemischt genutzten Betriebsmitteln können Selbständige den betrieblichen Nutzungsanteil abschreiben. Ein zu 60% betrieblich genutzter PKW kann entsprechend zu 60% abgeschrieben werden.",
+      "Selbständige mit einem Gewinn unter 200.000 Euro können den Investitionsabzugsbetrag ohne Nachweis eines verbindlichen Bestellvorgangs in Anspruch nehmen.",
+      "Für bewegliche Wirtschaftsgüter des Anlagevermögens können Selbständige auch außerplanmäßige Abschreibungen vornehmen, wenn der Wert des Betriebsmittels dauerhaft gemindert ist."
+    ]
+  }
+}
+
+docs {
+  Generate embeddings for German tax law passages.
+  
+  This example demonstrates BGE-M3's multilingual capabilities with 10 German legal texts
+  about tax depreciation rules for self-employed individuals.
+  
+  BGE-M3 is optimized for 100+ languages including German, making it ideal for:
+  - Multilingual document search
+  - Cross-lingual retrieval
+  - Semantic similarity in non-English languages
+  
+  The model processes German legal terminology with high accuracy, capturing
+  semantic nuances specific to German tax law (EStG, AfA, Betriebsmittel, etc.).
+  
+  Expected performance: ~0.5-2s per text on CPU
+}

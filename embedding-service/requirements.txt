@@ -1,0 +1,14 @@
+# Core dependencies for FlagEmbedding BGE-M3 embedding service
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+python-dotenv==1.0.0
+
+# FlagEmbedding for BGE-M3 embeddings (includes torch & transformers)
+FlagEmbedding>=1.2.0
+
+# Testing dependencies (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+requests==2.31.0

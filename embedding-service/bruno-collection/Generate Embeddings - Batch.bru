@@ -1,0 +1,39 @@
+meta {
+  name: Generate Embeddings - Batch
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/embed
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "texts": [
+      "Python is a high-level programming language known for its simplicity and readability.",
+      "Machine learning models require large datasets for training.",
+      "Natural language processing is a subfield of artificial intelligence.",
+      "Deep learning uses neural networks with multiple layers.",
+      "Data science combines statistics, programming, and domain expertise."
+    ]
+  }
+}
+
+docs {
+  Generate embeddings for multiple texts in batch.
+
+  Request:
+  - texts: Array of 1-100 texts
+
+  Response:
+  - embeddings: Array of 1024-dimensional vectors (same order as input)
+  - dimensions: 1024
+  - texts_count: Number of texts processed
+  - model: BAAI/bge-m3
+
+  Batch processing is efficient for embedding multiple texts at once.
+  All texts are processed together for optimal performance.
+}
