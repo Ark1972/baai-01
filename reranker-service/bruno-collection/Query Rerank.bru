@@ -17,23 +17,24 @@ body:json {
       "Python is a high-level programming language known for its simplicity and readability.",
       "A python is a large non-venomous snake found in Africa, Asia, and Australia.",
       "To cook pasta, boil water, add salt, add pasta, and cook for 8-12 minutes until al dente.",
-      "Python is a programming language used for web development and data science."
+      "Python is a programming language used for web development and data science.",
+      "Python is a TV series from 80s"
     ]
   }
 }
 
 docs {
   Rerank multiple passages for a single query, returning results sorted by relevance.
-
+  
   Request:
   - query: The query text (1-10000 chars)
   - passages: Array of passages to rank (1-100 items, each 1-10000 chars)
   - normalize: Optional, default true
-
+  
   Response:
   - re_ranked: Array of passages with scores, sorted by score descending
     - passage: The passage text
     - score: Relevance score (higher = more relevant)
-
+  
   This is the most common use case for reranking: ranking search results or documents by relevance to a query.
 }
